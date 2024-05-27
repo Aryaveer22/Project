@@ -1,0 +1,110 @@
+#include <WiFiNINA.h>
+#include <DHT.h>
+#include <Wire.h>
+#include "secret.h"
+
+#define DHTPIN 2      // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT11 // Type of the DHT sensor
+
+DHT dht(DHTPIN, DHTTYPE);
+
+char ssid[] = SECRET_SSID;
+char pass[] = SECRET_PASS;
+int status = WL_IDLE_STATUS;     // the Wifi status
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(9600);
+  
+  // Attempt to connect to WiFi network
+if(WiFi.status() != WL_CONNECTED){
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(SECRET_SSID);
+    while(WiFi.status() != WL_CONNECTED){
+      WiFi.begin(ssid, pass);  // Connect to network.
+      Serial.print(".");
+      delay(5000);     
+    } 
+    Serial.println("\nConnected.");
+  }
+
+  // If connection successful, print WiFi details
+  Serial.println("Connected to WiFi");
+  printWiFiStatus();
+
+  // Initialize sensors
+  dht.begin();
+  Wire.begin();
+}
+
+void loop() {
+  // Read sensor data
+  int soilMoisture = readSoilMoisture();
+  float temperature = readTemperature();
+  float humidity = readHumidity();
+  int lightIntensity = readLightIntensity();
+  
+  // Print sensor data to serial monitor
+  Serial.print("Soil Moisture: ");
+  Serial.println(soilMoisture);
+  Serial.print("Temperature: ");
+  Serial.println(temperature);
+  Serial.print("Humidity: ");
+  Serial.println(humidity);
+  Serial.print("Light Intensity: ");
+  Serial.println(lightIntensity);
+  
+  // Delay for stability
+  delay(1000);
+}
+
+int readSoilMoisture() {
+  // Read soil moisture sensor
+  return analogRead(A0); 
+}
+
+float readTemperature() {
+  // Read temperature from DHT11 sensor
+  return dht.readTemperature(); // Read temperature in Celsius
+}
+
+float readHumidity() {
+  // Read humidity from DHT11 sensor
+  return dht.readHumidity(); // Read relative humidity
+}
+
+int readLightIntensity() {
+  // Read light sensor
+  // Example code for GY30 light sensor
+  Wire.beginTransmission(0x23); // Start communication with GY30 sensor
+  Wire.write(0x10);             // Select register for 1x resolution
+  Wire.endTransmission();
+  delay(200);
+  
+  Wire.requestFrom(0x23, 2); // Request 2 bytes of data from the sensor
+  if (Wire.available() == 2) {
+    int highByte = Wire.read();   // Read high byte
+    int lowByte = Wire.read();    // Read low byte
+    int lightIntensity = (highByte << 8) | lowByte; // Combine high and low bytes
+    return lightIntensity;
+  } else {
+    return -1; // Return -1 if communication fails
+  }
+}
+
+void printWiFiStatus() {
+  // Print the SSID of the network you're attached to
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // Print your WiFi shield's IP address
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // Print the received signal strength
+  long rssi = WiFi.RSSI();
+  Serial.print("Signal strength (RSSI): ");
+  Serial.println(rssi);
+}
+
